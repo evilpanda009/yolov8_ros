@@ -1,0 +1,39 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/siddh/fans_ws/devel/include/**",
+        "/home/siddh/catkin_ws/devel/include/**",
+        "/opt/ros/noetic/include/**",
+        "/home/siddh/catkin_ws/src/beginner_tutorials/include/**",
+        "/home/siddh/catkin_ws/src/darknet_ros/darknet_ros/include/**",
+        "/home/siddh/catkin_ws/src/hector_slam/hector_geotiff/include/**",
+        "/home/siddh/catkin_ws/src/hector_slam/hector_map_tools/include/**",
+        "/home/siddh/catkin_ws/src/hector_slam/hector_mapping/include/**",
+        "/home/siddh/catkin_ws/src/hector_slam/hector_marker_drawing/include/**",
+        "/home/siddh/fans_ws/src/mavros/libmavconn/include/**",
+        "/home/siddh/fans_ws/src/mavros/mavros/include/**",
+        "/home/siddh/fans_ws/src/mavros/mavros_msgs/include/**",
+        "/home/siddh/catkin_ws/src/omnibase/omnibase_control/include/**",
+        "/home/siddh/fans_ws/src/pci/include/**",
+        "/home/siddh/catkin_ws/src/robot_localization/include/**",
+        "/home/siddh/catkin_ws/src/robot_pose_ekf/include/**",
+        "/home/siddh/catkin_ws/src/segmentation/include/**",
+        "/home/siddh/fans_ws/src/mavros/test_mavros/include/**",
+        "/home/siddh/catkin_ws/src/trotbot_tf/include/**",
+        "/home/siddh/catkin_ws/src/yolov8_ros/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}
