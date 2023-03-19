@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+import rospy
 import argparse
 import cv2
 import os
@@ -14,6 +16,10 @@ import numpy as np
 from pathlib import Path
 import torch
 import torch.backends.cudnn as cudnn
+import cv_bridge
+from geometry_msgs.msg import Pose,PoseArray
+from yolov8_ros.msg import Box,Boxes
+
 
 FILE = Path(__file__).resolve()
 ROOT = FILE.parents[0]  # yolov5 strongsort root directory
@@ -41,11 +47,19 @@ from yolov8.ultralytics.yolo.utils.plotting import Annotator, colors, save_one_b
 
 from trackers.multi_tracker_zoo import create_tracker
 
+def sub_callback(msg):
+    run(source=msg,classes=0,tracking_method='bytesort')
+
+from darknet_ros_msgs.msg import BoundingBoxes
+from sensor_msgs.msg import Image
+
+
+
 
 @torch.no_grad()
 def run(
         source='0',
-        yolo_weights=WEIGHTS / 'yolov5m.pt',  # model.pt path(s),
+        yolo_weights=WEIGHTS / 'yolov8n.pt',  # model.pt path(s),
         reid_weights=WEIGHTS / 'osnet_x0_25_msmt17.pt',  # model.pt path,
         tracking_method='strongsort',
         tracking_config=None,
@@ -61,7 +75,7 @@ def run(
         save_trajectories=False,  # save trajectories for each track
         save_vid=False,  # save confidences in --save-txt labels
         nosave=False,  # do not save images/videos
-        classes=None,  # filter by class: --class 0, or --class 0 2 3
+        classes=0,  # filter by class: --class 0, or --class 0 2 3
         agnostic_nms=False,  # class-agnostic NMS
         augment=False,  # augmented inference
         visualize=False,  # visualize features
@@ -219,11 +233,12 @@ def run(
 
                 # pass detections to strongsort
                 with dt[3]:
+                   
                     outputs[i] = tracker_list[i].update(det.cpu(), im0)
                 
                 # draw boxes for visualization
                 if len(outputs[i]) > 0:
-                    
+                    ros_box_array = Boxes()
                     if is_seg:
                         # Mask plotting
                         annotator.masks(
@@ -234,11 +249,21 @@ def run(
                         )
                     
                     for j, (output) in enumerate(outputs[i]):
+                        ros_box = Box()
                         
                         bbox = output[0:4]
                         id = output[4]
                         cls = output[5]
                         conf = output[6]
+                        ros_box.top_left_x = bbox[0]
+                        ros_box.top_left_y = bbox[1]
+                        ros_box.width = bbox[2] - bbox[0]
+                        ros_box.height = bbox[3] - bbox[1]
+                        ros_box.id = id
+                        ros_box_array.Boxes.append(ros_box)
+                    
+                    
+
 
                         if save_txt:
                             # to MOT format
@@ -265,6 +290,8 @@ def run(
                             if save_crop:
                                 txt_file_name = txt_file_name if (isinstance(path, list) and len(path) > 1) else ''
                                 save_one_box(np.array(bbox, dtype=np.int16), imc, file=save_dir / 'crops' / txt_file_name / names[c] / f'{id}' / f'{p.stem}.jpg', BGR=True)
+                        
+                    pub.publish(ros_box_array)
                             
             else:
                 pass
@@ -314,9 +341,9 @@ def run(
 
 def parse_opt():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--yolo-weights', nargs='+', type=Path, default=WEIGHTS / 'yolov8s-seg.pt', help='model.pt path(s)')
+    parser.add_argument('--yolo-weights', nargs='+', type=Path, default=WEIGHTS / 'yolov8n.pt', help='model.pt path(s)')
     parser.add_argument('--reid-weights', type=Path, default=WEIGHTS / 'osnet_x0_25_msmt17.pt')
-    parser.add_argument('--tracking-method', type=str, default='deepocsort', help='deepocsort, botsort, strongsort, ocsort, bytetrack')
+    parser.add_argument('--tracking-method', type=str, default='bytetrack', help='strongsort, ocsort, bytetrack')
     parser.add_argument('--tracking-config', type=Path, default=None)
     parser.add_argument('--source', type=str, default='0', help='file/dir/URL/glob, 0 for webcam')  
     parser.add_argument('--imgsz', '--img', '--img-size', nargs='+', type=int, default=[640], help='inference size h,w')
@@ -329,10 +356,10 @@ def parse_opt():
     parser.add_argument('--save-conf', action='store_true', help='save confidences in --save-txt labels')
     parser.add_argument('--save-crop', action='store_true', help='save cropped prediction boxes')
     parser.add_argument('--save-trajectories', action='store_true', help='save trajectories for each track')
-    parser.add_argument('--save-vid', action='store_true', help='save video tracking results')
+    parser.add_argument('--save-vid', action='store_true', help='sawhive video tracking results')
     parser.add_argument('--nosave', action='store_true', help='do not save images/videos')
     # class 0 is person, 1 is bycicle, 2 is car... 79 is oven
-    parser.add_argument('--classes', nargs='+', type=int, help='filter by class: --classes 0, or --classes 0 2 3')
+    parser.add_argument('--classes', nargs='+', type=int,default=0, help='filter by class: --classes 0, or --classes 0 2 3')
     parser.add_argument('--agnostic-nms', action='store_true', help='class-agnostic NMS')
     parser.add_argument('--augment', action='store_true', help='augmented inference')
     parser.add_argument('--visualize', action='store_true', help='visualize features')
@@ -361,5 +388,10 @@ def main(opt):
 
 
 if __name__ == "__main__":
+    rospy.init_node('yolo_tracker', anonymous=True)
+    #sub = rospy.Subscriber('/camera/color/image_raw', Image, sub_callback)
+    pub = rospy.Publisher('/yolov8_boxes', Boxes, queue_size=10)
     opt = parse_opt()
-    main(opt)
+    while not rospy.is_shutdown():
+        main(opt)
+    rospy.spin()
