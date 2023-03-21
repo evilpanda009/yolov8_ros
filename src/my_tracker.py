@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import rospy
-from darknet_ros_msgs.msg import BoundingBoxes
+#from darknet_ros_msgs.msg import BoundingBoxes
 from sensor_msgs.msg import Image
 from yolov8_ros.msg import Box,Boxes
 import time
@@ -27,6 +27,9 @@ class Isolate():
         self.angular_vel = 0.05
         self.bb = []
         self.subject = Box()
+        self.count = 0
+        self.det = 0
+        self.keep_moving = True
     
     def move_forward(self):
         msg = Twist()
@@ -69,27 +72,45 @@ class Isolate():
             self.cx_old = int((xmin + xmax)/2)
 
     def lets_move(self):
-        if len(self.bb)!=0:    
+        if len(self.bb)>0:    
             self.get_cx_cy()
             error = float(self.center - self.cx_old)
-            while(abs(error) > 30 and not rospy.is_shutdown()):
+            while(abs(error) > 30 and not rospy.is_shutdown() and self.keep_moving):
                     self.get_cx_cy()                  
                     error = float(self.center - self.cx_old)
-                    rotation = 1 if (error>0) else -1 # decides direction of rotation
+                    rotation = error if (error>0) else -error # decides direction of rotation
                     rotation_time = error/100
                     self.rotate_with_linear(rotation, True)
                     rospy.sleep(0.05)
             self.stop()
-            while(self.subject_depth > 1 and not rospy.is_shutdown()):
+            while(self.subject_depth > 1 and not rospy.is_shutdown() and self.keep_moving):
                 self.move_forward()
             self.stop()
 
+    
+
 
     def box_callback(self,msg):
-        self.boxes = msg.Boxes if len(msg.Boxes)>0 else []
-        self.bb = self.boxes
-        self.subject = self.bb[0] if len(self.bb)>0 else None
-        # Write service here to select any ID instead of 0
+        if(len(msg.Boxes)>0):
+            self.boxes = msg.Boxes 
+            self.bb = self.boxes
+            self.subject = self.bb[0] 
+            self.det += 1
+            self.count = 0
+            if(self.det>3):
+                self.keep_moving = True
+                self.det = 0
+
+                  # Write service here to select any ID instead of 0
+        else:
+            self.boxes = []
+            self.bb = self.boxes
+            self.subject = None
+            self.count += 1
+            self.det = 0
+            if self.count > 10:
+                self.keep_moving = False
+                self.count = 0
 
     def depth_callback(self, msg):
         bridge = CvBridge()
@@ -99,10 +120,9 @@ class Isolate():
         self.center = self.image_width/2
 
     def record_depth(self):
-        min_depth = 10000000
-        self.temp_depth = -1
         box = self.subject
-        if box is not None:
+        if box is not None and (box.height*box.width > 0.8*(self.image_height*self.image_width)):
+            self.keep_moving = True
             center_x = int(box.top_left_x + box.width/2)
             center_y = int(box.top_left_y + box.height/2)
             width_limit = int(box.width/10) 
@@ -115,6 +135,9 @@ class Isolate():
                 depth += (self.depths[y_rand][x_rand])
             depth /= 10
             self.subject_depth = depth
+        else:
+            self.keep_moving = False
+
 
 
     
@@ -124,3 +147,4 @@ if __name__=="__main__":
     while(True and not rospy.is_shutdown()):
         root.lets_move()
     rospy.spin()
+
