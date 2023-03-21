@@ -50,7 +50,7 @@ from trackers.multi_tracker_zoo import create_tracker
 def sub_callback(msg):
     run(source=msg,classes=0,tracking_method='bytesort')
 
-from darknet_ros_msgs.msg import BoundingBoxes
+
 from sensor_msgs.msg import Image
 
 
@@ -67,7 +67,7 @@ def run(
         conf_thres=0.25,  # confidence threshold
         iou_thres=0.45,  # NMS IOU threshold
         max_det=1000,  # maximum detections per image
-        device='',  # cuda device, i.e. 0 or 0,1,2,3 or cpu
+        device=0,  # cuda device, i.e. 0 or 0,1,2,3 or cpu
         show_vid=False,  # show results
         save_txt=False,  # save results to *.txt
         save_conf=False,  # save confidences in --save-txt labels
@@ -292,8 +292,12 @@ def run(
                                 save_one_box(np.array(bbox, dtype=np.int16), imc, file=save_dir / 'crops' / txt_file_name / names[c] / f'{id}' / f'{p.stem}.jpg', BGR=True)
                         
                     pub.publish(ros_box_array)
+                else:
+                    pub.publish([])
+
                             
             else:
+                pub.publish([])
                 pass
                 #tracker_list[i].tracker.pred_n_update_all_tracks()
                 
@@ -395,3 +399,4 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         main(opt)
     rospy.spin()
+
