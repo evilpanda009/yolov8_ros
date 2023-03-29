@@ -122,7 +122,7 @@ def run(
     # Dataloader
     bs = 1
     if webcam:
-        show_vid = check_imshow(warn=True)
+       # show_vid = check_imshow(warn=True)
         dataset = LoadStreams(
             source,
             imgsz=imgsz,
@@ -132,6 +132,8 @@ def run(
             vid_stride=vid_stride
         )
         bs = len(dataset)
+        if cv2.waitKey(1) == ord('q'):  # 1 millisecond
+            exit()
     else:
         dataset = LoadImages(
             source,
@@ -303,14 +305,14 @@ def run(
                 
             # Stream results
             im0 = annotator.result()
-            if show_vid:
-                if platform.system() == 'Linux' and p not in windows:
-                    windows.append(p)
-                    cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
-                    cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
-                cv2.imshow(str(p), im0)
-                if cv2.waitKey(1) == ord('q'):  # 1 millisecond
-                    exit()
+            # if show_vid:
+            #     if platform.system() == 'Linux' and p not in windows:
+            #         windows.append(p)
+            #         cv2.namedWindow(str(p), cv2.WINDOW_NORMAL | cv2.WINDOW_KEEPRATIO)  # allow window resize (Linux)
+            #         cv2.resizeWindow(str(p), im0.shape[1], im0.shape[0])
+            #     cv2.imshow(str(p), im0)
+            #     if cv2.waitKey(1) == ord('q'):  # 1 millisecond
+            #         exit()
 
             # Save results (image with detections)
             if save_vid:
@@ -341,7 +343,8 @@ def run(
         LOGGER.info(f"Results saved to {colorstr('bold', save_dir)}{s}")
     if update:
         strip_optimizer(yolo_weights)  # update model (to fix SourceChangeWarning)
-
+    if cv2.waitKey(1) == ord('q'):  # 1 millisecond
+        exit()
 
 def parse_opt():
     parser = argparse.ArgumentParser()
@@ -399,4 +402,3 @@ if __name__ == "__main__":
     while not rospy.is_shutdown():
         main(opt)
     rospy.spin()
-
